@@ -32,7 +32,7 @@ fi
 
 
 SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
-cd SCRIPTDIR
+cd $SCRIPTDIR
 DEPDIR=$SCRIPTDIR/dependencies
 
 DEPS=("4Suite-XML-1.0.2" "cDeepCopy" "comtypes-0.6.2" "cPeach"

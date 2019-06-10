@@ -2,75 +2,82 @@
 #
 # $Id: setup.py 84 2007-08-17 12:41:03Z dugsong $
 
-from distutils.core import setup, Extension
-from distutils.command import config, clean
-import cPickle, glob, os, sys
+import cPickle
+import glob
+import os
+import sys
+from distutils.command import clean, config
+from distutils.core import Extension, setup
+
 from Pyrex.Distutils import build_ext
 
 pcap_config = {}
 pcap_cache = 'config.pkl'
 
+
 class config_pcap(config.config):
     description = 'configure pcap paths'
-    user_options = [ ('with-pcap=', None,
-                      'path to pcap build or installation directory') ]
-    
+    user_options = [('with-pcap=', None,
+                     'path to pcap build or installation directory')]
+
     def initialize_options(self):
         config.config.initialize_options(self)
         self.dump_source = 0
-        #self.noisy = 0
         self.with_pcap = None
 
     def _write_config_h(self, cfg):
         # XXX - write out config.h for pcap_ex.c
         d = {}
-        if os.path.exists(os.path.join(cfg['include_dirs'][0], 'pcap-int.h')):
-            d['HAVE_PCAP_INT_H'] = 1
-        buf = open(os.path.join(cfg['include_dirs'][0], 'pcap.h')).read()
-        if buf.find('pcap_file(') != -1:
-            d['HAVE_PCAP_FILE'] = 1
-        if buf.find('pcap_compile_nopcap(') != -1:
-            d['HAVE_PCAP_COMPILE_NOPCAP'] = 1
-        if buf.find('pcap_setnonblock(') != -1:
-            d['HAVE_PCAP_SETNONBLOCK'] = 1
+        for incdir in cfg['include_dirs']:
+            if os.path.exists(os.path.join(incdir, 'pcap-int.h')):
+                d['HAVE_PCAP_INT_H'] = 1
+            buf = open(os.path.join(incdir, 'pcap.h')).read()
+            if buf.find('pcap_file(') != -1:
+                d['HAVE_PCAP_FILE'] = 1
+            if buf.find('pcap_compile_nopcap(') != -1:
+                d['HAVE_PCAP_COMPILE_NOPCAP'] = 1
+            if buf.find('pcap_setnonblock(') != -1:
+                d['HAVE_PCAP_SETNONBLOCK'] = 1
         f = open('config.h', 'w')
         for k, v in d.iteritems():
             f.write('#define %s %s\n' % (k, v))
-    
-    def _pcap_config(self, dirs=[ None ]):
-	print "configuring"
-        cfg = {}
-        if not dirs[0]:
-            dirs = [ '/usr', sys.prefix ] + glob.glob('/opt/libpcap*') + \
+
+    def _pcap_config(self, dirs=[None]):
+        print "configuring"
+        cfg = {'include_dirs': []}
+        if dirs[0] is None:
+            dirs = ['/usr', sys.prefix] + glob.glob('/opt/libpcap*') + \
                    glob.glob('../libpcap*') + glob.glob('../wpdpack*')
         for d in dirs:
             for sd in ('include', 'include/pcap', ''):
-                incdirs = [ os.path.join(d, sd) ]
-                if os.path.exists(os.path.join(d, sd, 'pcap.h')):
-                    cfg['include_dirs'] = [ os.path.join(d, sd) ]
-                    for sd in ('lib', 'lib64', ''):
-                        for lib in (('pcap', 'libpcap.a'),
-                                    ('pcap', 'libpcap.so'),
-                                    ('pcap', 'libpcap.dylib'),
-                                    ('wpcap', 'wpcap.lib')):
-                            if os.path.exists(os.path.join(d, sd, lib[1])):
-                                cfg['library_dirs'] = [ os.path.join(d, sd) ]
-                                cfg['libraries'] = [ lib[0] ]
-                                if lib[0] == 'wpcap':
-                                    cfg['libraries'].append('iphlpapi')
-                                    cfg['extra_compile_args'] = \
-                                        [ '-DWIN32', '-DWPCAP' ]
-                                print 'found', cfg
-                                self._write_config_h(cfg)
-                                return cfg
-        raise "couldn't find pcap build or installation directory"
-    
+                incdir = os.path.join(d, sd)
+                if os.path.exists(os.path.join(incdir, 'pcap.h')):
+                    cfg['include_dirs'] += [incdir]
+            for sd in ('lib/x86_64-linux-gnu', 'lib', 'lib64', ''):
+                libdir = os.path.join(d, sd)
+                for lib in (('pcap', 'libpcap.a'),
+                            ('pcap', 'libpcap.so'),
+                            ('pcap', 'libpcap.dylib'),
+                            ('wpcap', 'wpcap.lib')):
+                    if os.path.exists(os.path.join(libdir, lib[1])):
+                        cfg['library_dirs'] = [libdir]
+                        cfg['libraries'] = [lib[0]]
+                        if lib[0] == 'wpcap':
+                            cfg['libraries'].append('iphlpapi')
+                            cfg['extra_compile_args'] = \
+                                ['-DWIN32', '-DWPCAP']
+                        print 'found', cfg
+                        self._write_config_h(cfg)
+                        return cfg
+        raise Exception("couldn't find pcap build or installation directory")
+
     def run(self):
-        #config.log.set_verbosity(0)
-	conf = self._pcap_config([ self.with_pcap ])
+        config.log.set_verbosity(1)
+        conf = self._pcap_config([self.with_pcap])
         cPickle.dump(conf, open(pcap_cache, 'wb'))
         self.temp_files.append(pcap_cache)
-	print conf
+        print conf
+
 
 class clean_pcap(clean.clean):
     def run(self):
@@ -79,10 +86,11 @@ class clean_pcap(clean.clean):
             print "removing '%s'" % pcap_cache
             os.unlink(pcap_cache)
 
+
 if len(sys.argv) > 1 and sys.argv[1] in ['build', 'bdist_msi', 'install']:
     try:
         pcap_config = cPickle.load(open(pcap_cache))
-	print pcap_config
+        print pcap_config
     except IOError:
         print >>sys.stderr, 'run "%s config" first!' % sys.argv[0]
         sys.exit(1)
@@ -95,7 +103,9 @@ pcap = Extension(name='pcap',
                  libraries=pcap_config.get('libraries', ''),
                  extra_compile_args=pcap_config.get('extra_compile_args', ''))
 
-pcap_cmds = { 'config':config_pcap, 'clean':clean_pcap, 'build_ext': build_ext }
+pcap_cmds = {'config': config_pcap,
+             'clean': clean_pcap,
+             'build_ext': build_ext}
 
 setup(name='pcap',
       version='1.1',
@@ -104,5 +114,4 @@ setup(name='pcap',
       url='http://monkey.org/~dugsong/pypcap/',
       description='packet capture library',
       cmdclass=pcap_cmds,
-      ext_modules = [ pcap ])
-
+      ext_modules=[pcap])

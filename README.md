@@ -5,6 +5,8 @@ This repo is a backup/fork for [Peach Community Edition](https://sourceforge.net
 * Branch `master` contains initial copy of Sourceforge [files](https://sourceforge.net/projects/peachfuzz/files/Peach/2.3.9/)
 * Branch `dev` contains my fixups and additions
 
+This version is adopted to Linux (Ubuntu).
+
 
 ## Installation guide
 

@@ -5,12 +5,11 @@ This repo is a backup/fork for [Peach Community Edition](https://sourceforge.net
 * Branch `master` contains initial copy of Sourceforge [files](https://sourceforge.net/projects/peachfuzz/files/Peach/2.3.9/)
 * Branch `dev` contains my fixups and additions
 
-This version is adopted to Linux (Ubuntu). This package tested on **Ubuntu 18.04** with **Python 2.7.15rc1**.
-
 
 ## Installation
+This version is adopted to Linux (Ubuntu). This package tested on **Ubuntu 18.04** with **Python 2.7.15rc1**.
 
-Python version: **Python 2.7** (not 3!)
+Required Python version: **Python 2.7** (not 3!)
 
 It's recommended to work from virtual environment
 ```
